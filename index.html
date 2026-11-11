@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Unødvendig tapt avkastning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: result band on top, two stacked charts sharing one age axis, inputs in a side column (stacks on phone). */
+:root{
+  --bg:#f5f6f8; --panel:#ffffff; --fg:#14181f; --fg2:#4a5260; --muted:#7a8291;
+  --line:#e2e5ea; --grid:#eceef2; --accent:#1f5f8b;
+  --s1:#2a78d6; --s2:#eb6834; --gap:rgba(42,120,214,.12);
+  --good:#0f7a4a; --warn-bg:#fff4e0; --warn-fg:#7a4a00;
+  --f-display:"Space Grotesk",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111418; --panel:#191d23; --fg:#eef0f3; --fg2:#b6bcc6; --muted:#8a919c;
+  --line:#2a3039; --grid:#232831; --accent:#7fb4dc;
+  --s1:#3987e5; --s2:#d95926; --gap:rgba(57,135,229,.18);
+  --good:#4cc38a; --warn-bg:#3a2c12; --warn-fg:#f3cf8a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111418; --panel:#191d23; --fg:#eef0f3; --fg2:#b6bcc6; --muted:#8a919c;
+  --line:#2a3039; --grid:#232831; --accent:#7fb4dc;
+  --s1:#3987e5; --s2:#d95926; --gap:rgba(57,135,229,.18);
+  --good:#4cc38a; --warn-bg:#3a2c12; --warn-fg:#f3cf8a; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--f-display);font-weight:700;font-size:28px;letter-spacing:-.01em;margin:0;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:600;font-size:16px;margin:0}
+h3{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0}
+.sub{color:var(--fg2);margin:4px 0 0;max-width:72ch}
+.num{font-variant-numeric:tabular-nums}
+.summary{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.kpi{background:var(--panel);padding:18px 20px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.kpi .v{font-family:var(--f-display);font-weight:700;font-size:30px;letter-spacing:-.01em}
+.kpi.main .v{font-size:40px;color:var(--s1)}
+.kpi .d{color:var(--fg2);font-size:13px}
+.main-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px 20px;min-width:0}
+.charthead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;margin-bottom:6px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;color:var(--fg2);font-size:13px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:3px;border-radius:2px;display:inline-block}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{font:inherit;font-size:12.5px;border:0;background:transparent;color:var(--fg2);padding:5px 11px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.seg button:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chart{position:relative}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{fill:var(--muted);font-size:11px;font-family:var(--f-body)}
+.ctitle{font-size:12.5px;font-weight:600;color:var(--fg2);margin:14px 0 2px}
+.tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;box-shadow:0 4px 18px rgba(0,0,0,.12);min-width:200px;z-index:2}
+.tip b{font-family:var(--f-display)}
+.tip .r{display:flex;justify-content:space-between;gap:14px}
+.tip .r span:first-child{color:var(--fg2)}
+.side{display:flex;flex-direction:column;gap:14px}
+fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.field{display:grid;grid-template-columns:1fr 112px;align-items:center;gap:10px}
+.field label{color:var(--fg2);font-size:13px;line-height:1.3}
+.field label small{display:block;color:var(--muted);font-size:11px}
+.field input{width:100%;font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.field input.json{border-color:color-mix(in srgb,var(--good) 55%,var(--line))}
+.check{display:flex;gap:8px;align-items:flex-start;color:var(--fg2);font-size:13px;line-height:1.35}
+.check input{margin-top:2px}
+.drop{border:1.5px dashed var(--line);border-radius:8px;padding:12px;text-align:center;color:var(--fg2);font-size:13px;cursor:pointer;display:block}
+.drop:hover,.drop.over{border-color:var(--accent);color:var(--fg)}
+.drop input{display:none}
+.status{font-size:12px;color:var(--muted)}
+.provsel{width:100%;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.ptbl td,.ptbl th{white-space:normal;vertical-align:top}
+.ptbl td:nth-child(2),.ptbl td:last-child,.ptbl th:nth-child(2),.ptbl th:last-child{text-align:left;min-width:150px}
+.ptbl tr.me td{background:color-mix(in srgb,var(--s1) 8%,transparent)}
+.ptbl a{color:var(--accent)}
+.unk{color:var(--muted)}
+.invsel{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.invsel .lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.invsel .val{font-family:var(--f-display);font-weight:600;font-size:15px;color:var(--fg)}
+.invsel .meta{font-size:12px;color:var(--fg2)}
+.note{background:var(--warn-bg);color:var(--warn-fg);border-radius:8px;padding:10px 12px;font-size:12.5px}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.btn{font:inherit;font-size:12.5px;border:1px solid var(--line);background:transparent;color:var(--fg2);border-radius:6px;padding:5px 10px;cursor:pointer}
+.btn:hover{color:var(--fg);border-color:var(--muted)}
+details summary{cursor:pointer;font-weight:600;font-family:var(--f-display)}
+.tablewrap{overflow-x:auto;margin-top:10px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 8px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600}
+.scen td:first-child{white-space:normal}
+.method{color:var(--fg2);font-size:13px;max-width:80ch}
+.method p{margin:8px 0}
+@media (max-width:900px){.main-grid{grid-template-columns:1fr}.summary{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>Unødvendig tapt avkastning</h1>
+    <p class="sub">Innskuddspensjon hos dagens leverandør, med aldersbasert nedtrapping, sammenlignet med en langsiktig profil hos et innkjøpsfellesskap. Beregningen følger Fasit-arket i simulatoren. Alle beløp er sum pensjonsutbetalinger i dagens kroner.</p>
+  </header>
+
+  <section class="summary" aria-label="Resultat">
+    <div class="kpi main"><h3>Unødvendig tapt avkastning</h3><div class="v num" id="kTapt">–</div><div class="d">Effekt av aksjeandel</div></div>
+    <div class="kpi"><h3>Unødvendig høye kostnader</h3><div class="v num" id="kKost">–</div><div class="d">Effekt av forvaltningshonorar</div></div>
+    <div class="kpi"><h3>Samlet forskjell</h3><div class="v num" id="kSum">–</div><div class="d" id="kSumD">–</div></div>
+  </section>
+
+  <div class="main-grid">
+    <section class="card" aria-label="Grafer" style="position:relative">
+      <div class="charthead">
+        <div class="legend">
+          <span><i class="sw" style="background:var(--s2)"></i>I dag: dagens profil og honorar</span>
+          <span><i class="sw" style="background:var(--s1)"></i>Best: langsiktig profil, lavt honorar</span>
+        </div>
+        <div class="seg" role="group" aria-label="Saldo som vises">
+          <button id="bTot" aria-pressed="true">Samlet saldo</button>
+          <button id="bPkb" aria-pressed="false">Kun PKB (som Excel)</button>
+        </div>
+      </div>
+      <div class="ctitle">Oppsparte midler (dagens kr)</div>
+      <div class="chart" id="c1"></div>
+      <div class="ctitle">Aksjeandel</div>
+      <div class="chart" id="c2"></div>
+      <div class="tip" id="tip" hidden></div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <fieldset>
+          <h2>Dine data</h2>
+          <label class="drop" id="drop">
+            <input type="file" id="file" accept=".json,application/json" multiple>
+            Slipp <b>egneData</b>, <b>norskPensjon</b>, <b>norskPensjonKostnadstall</b> og/eller <b>eiendeler</b>.json her, eller klikk for å velge
+          </label>
+          <div class="status" id="status">Eksempeldata: testperson «Anon» (nov. 2026)</div>
+          <div class="field"><label for="alder">Alder i dag</label><input id="alder" type="number" step="1"></div>
+          <div class="field"><label for="lonn">Pensjonsgivende lønn</label><input id="lonn" type="number" step="1000"></div>
+          <div class="field"><label for="tp0">Saldo innskuddspensjon<small>nåværende arbeidsgiver</small></label><input id="tp0" type="number" step="1000"></div>
+          <div class="field"><label for="pkb0">Saldo pensjonskapitalbevis<small>tidligere arbeidsgivere</small></label><input id="pkb0" type="number" step="1000"></div>
+          <div class="field"><label for="innskudd">Avtalt årlig innskudd<small>gir sparesats under 7,1 G</small></label><input id="innskudd" type="number" step="100"></div>
+          <div class="field"><label for="uttak">Uttaksalder</label><input id="uttak" type="number" step="1"></div>
+          <div class="field"><label for="utbet">Utbetalingsperiode (år)<small>ikke i JSON, standard 10</small></label><input id="utbet" type="number" step="1"></div>
+          <div class="field"><label for="fHigh">Forv.honorar, dagens leverandør (%)<small>compensationRate</small></label><input id="fHigh" type="number" step="0.01"></div>
+          <div class="btns"><button class="btn" id="loadExcel">Last Excel-testpersonen</button></div>
+        </fieldset>
+      </section>
+
+      <section class="card">
+        <fieldset>
+          <h2>Dagens leverandør</h2>
+          <div class="invsel" id="invSel"></div>
+          <div class="field"><label for="prov">Profil hentet fra<small>styres av leverandørnavnet</small></label>
+            <select id="prov" class="provsel"><option value="">Manuell</option><option value="dnb">DNB</option><option value="nordea">Nordea</option><option value="storebrand">Storebrand</option><option value="gjensidige">Gjensidige</option></select></div>
+          <div class="note" id="provNote">Velg leverandør eller fyll inn manuelt.</div>
+          <div class="field"><label for="sR">Aksjeandel før nedtrapping (%)<small>start_ratio</small></label><input id="sR" type="number" step="1"></div>
+          <div class="field"><label for="eR">Aksjeandel etter nedtrapping (%)<small>slutt_ratio</small></label><input id="eR" type="number" step="1"></div>
+          <div class="field"><label for="sN">Nedtrapping starter (alder)<small>Start_nedtrapping</small></label><input id="sN" type="number" step="1"></div>
+          <div class="field"><label for="eN">Nedtrapping slutter (alder)<small>Slutt_nedtrapping</small></label><input id="eN" type="number" step="1"></div>
+        </fieldset>
+      </section>
+
+      <section class="card">
+        <fieldset>
+          <h2>Innkjøpsfellesskap</h2>
+          <div class="field"><label for="fLow">Forv.honorar (%)</label><input id="fLow" type="number" step="0.01"></div>
+          <div class="field"><label for="bR">Aksjeandel langsiktig (%)<small>best_ratio · Duvi Langsiktig 80 %</small></label><input id="bR" type="number" step="1"></div>
+          <div class="field"><label for="mR">Aksjeandel kortsiktig (%)<small>middle_ratio · Duvi Kortsiktig 30 %</small></label><input id="mR" type="number" step="1"></div>
+          <div class="field"><label for="ov">Bytte til kortsiktig (alder)<small>Overgang_Langsiktig_Kortsiktig · Duvi: 77 (ingen nedtrapping)</small></label><input id="ov" type="number" step="1"></div>
+        </fieldset>
+      </section>
+
+      <section class="card">
+        <fieldset>
+          <h2>Forutsetninger</h2>
+          <div class="field"><label for="ra">Avkastning aksjer (%)<small>nominell</small></label><input id="ra" type="number" step="0.1"></div>
+          <div class="field"><label for="rr">Avkastning renter (%)<small>nominell</small></label><input id="rr" type="number" step="0.1"></div>
+          <div class="field"><label for="infl">Inflasjon (%)</label><input id="infl" type="number" step="0.1"></div>
+          <div class="field"><label for="gL">Lønnsvekst (%)</label><input id="gL" type="number" step="0.1"></div>
+          <div class="field"><label for="gG">G-vekst (%)</label><input id="gG" type="number" step="0.1"></div>
+          <div class="field"><label for="G0">Grunnbeløp G (kr)<small>1. mai 2026: 136 549</small></label><input id="G0" type="number" step="1"></div>
+          <div class="field"><label for="over">Sparesats 7,1–12 G (%)</label><input id="over" type="number" step="0.1"></div>
+          <div class="field"><label for="js">Jobbskifte hvert … år<small>0 = aldri</small></label><input id="js" type="number" step="1"></div>
+          <label class="check"><input type="checkbox" id="fraNull" checked> Sparing fra første krone (fra 0 G)</label>
+          <label class="check"><input type="checkbox" id="fixFee"> Trekk honorar riktig på nåværende konto. Excel trekker ikke honorar her, men legger honorarforskjellen til lavkost-scenarioene.</label>
+          <div class="btns"><button class="btn" id="reset">Tilbakestill forutsetninger</button></div>
+        </fieldset>
+      </section>
+    </aside>
+  </div>
+
+  <section class="card">
+    <h2>Leverandørenes standardprofiler</h2>
+    <p class="sub" style="font-size:13px">Hentet fra leverandørenes egne sider 11.11.2026. Raden for brukerens leverandør er uthevet og brukes i beregningen. Strek betyr at leverandøren ikke oppgir tallet. Da beholdes verdien i feltet.</p>
+    <div class="tablewrap"><table class="ptbl" id="ptbl"></table></div>
+  </section>
+
+  <section class="card">
+    <h2>De fire scenarioene</h2>
+    <div class="tablewrap"><table class="scen" id="scen"></table></div>
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Tabell år for år</summary>
+      <div class="tablewrap"><table id="tbl"></table></div>
+    </details>
+  </section>
+
+  <section class="card method">
+    <h2>Slik beregnes tallene</h2>
+    <p>Modellen er en direkte overføring av Fasit-arket i simulator_NY26okt26.xlsx. Med Excel-testpersonen gir den 530 780 kr i kostnader og 1 207 589 kr i tapt avkastning, samme tall som arket.</p>
+    <p>Fire scenarioer simuleres år for år. <b>A</b>: langsiktig profil med lavt honorar. <b>B</b>: langsiktig profil med høyt honorar. <b>C</b>: dagens nedtrapping med lavt honorar. <b>D</b>: dagens nedtrapping med høyt honorar. Langsiktig profil gir <i>best_ratio</i> aksjer fram til byttealderen og deretter <i>middle_ratio</i>. Avkastningen regnes realt (nominell minus inflasjon) av saldo pluss halve årets innskudd.</p>
+    <p>Innskuddet er sparesats × lønn opp til 7,1 G pluss 5,9 % mellom 7,1 og 12 G, deflatert til dagens kroner. Sparesatsen under 7,1 G er avtalt innskudd delt på lønn. Ved hvert jobbskifte flyttes saldoen til et pensjonskapitalbevis. Fra uttaksalder betales saldoen ut som saldo delt på antall gjenværende år.</p>
+    <p><b>Kostnader</b> = ((A − B) + (C − D)) / 2. <b>Tapt avkastning</b> = ((A − C) + (B − D)) / 2. Hver effekt er gjennomsnittet av de to mulige rekkefølgene, og til sammen gir de A − D. Resultatene rundes av til nærmeste 10 000 kr.</p>
+  </section>
+</div>
+
+<script>
+const DEFAULT_PERSON = {alder:40, lonn:1083230, tp0:886435, pkb0:0, innskudd:58296, uttak:67, utbet:10, fHigh:0.49};
+const EXCEL_PERSON   = {alder:39, lonn:986973,  tp0:724544, pkb0:0, innskudd:57528, uttak:67, utbet:10, fHigh:0.69};
+const DEFAULT_ASSUMP = {sR:50, eR:10, sN:60, eN:75, fLow:0.18, bR:80, mR:30, ov:77, ra:5.5, rr:2.5, infl:2.0, gL:3.5, gG:3.5, G0:136549, over:5.9, js:5};
+const FIELDS = Object.keys(DEFAULT_PERSON).concat(Object.keys(DEFAULT_ASSUMP));
+let pkbOnly=false;
+const $=id=>document.getElementById(id);
+const nf=new Intl.NumberFormat('nb-NO',{maximumFractionDigits:0});
+const kr=v=>nf.format(v)+' kr';
+const round10k=v=>Math.round(v/10000)*10000;
+
+function setVals(o,json){ for(const k in o){ const e=$(k); if(!e) continue; e.value=o[k]; if(json!==undefined) e.classList.toggle('json',!!json);} }
+function getP(){ const v={}; FIELDS.forEach(k=>v[k]=parseFloat($(k).value)); return v; }
+
+/* ---------- model: port of Fasit!R:BD ---------- */
+function ratioNow(a,p){ if(a<p.sN) return p.sR; if(a<p.eN) return (p.eR-p.sR)*((a-(p.sN-1))/(p.eN-(p.sN-1)))+p.sR; return p.eR; }
+function model(v){
+  const p={alder:Math.round(v.alder),uttak:Math.round(v.uttak),utbet:Math.max(1,Math.round(v.utbet)),lonn:v.lonn,pkb0:v.pkb0||0,tp0:v.tp0||0,
+    js:Math.max(0,Math.round(v.js)),infl:v.infl/100,gL:v.gL/100,gG:v.gG/100,G0:v.G0,ra:v.ra/100,rr:v.rr/100,
+    fLow:v.fLow/100,fHigh:v.fHigh/100,fraNull:$('fraNull').checked,fixFee:$('fixFee').checked,
+    under:v.lonn>0?v.innskudd/v.lonn:0,over:v.over/100,sR:v.sR/100,eR:v.eR/100,bR:v.bR/100,mR:v.mR/100,sN:v.sN,eN:v.eN,ov:v.ov};
+  p.rL=p.bR*p.ra+(1-p.bR)*p.rr; p.rK=p.mR*p.ra+(1-p.mR)*p.rr;
+  const a0=p.alder, PA=p.uttak, UP=p.utbet, rows=[], prev={}, sum={A:0,B:0,C:0,D:0}, last=PA+UP;
+  for(let k=0;a0+k<=last;k++){
+    const a=a0+k, t=k;
+    const H=(a>=PA||!p.js)?0:(((t+1)%p.js===0)?1:0);
+    const G=p.G0*Math.pow(1+p.gG,t), lonn=p.lonn*Math.pow(1+p.gL,t), K=lonn/G;
+    let L=0;
+    if(a<PA){ L=(p.fraNull?p.under*G:0)+(K>=7.1?p.under*G*6.1:(K-1)*p.under*G)+((K>=7.1&&K<=12)?p.over*G*(K-7.1):(K>12?p.over*G*4.9:0)); L/=Math.pow(1+p.infl,t); }
+    const best=a>=p.ov?p.rK:p.rL, w=ratioNow(a,p), worst=w*p.ra+(1-w)*p.rr;
+    const row={age:a,L,w,wAlt:a>=p.ov?p.mR:p.bR}, c={};
+    for(const s of ['A','B','C','D']){
+      const fee=(s==='A'||s==='C')?p.fLow:p.fHigh, ret=(s==='A'||s==='B')?best:worst;
+      let R,V; if(k===0){R=p.pkb0;V=p.tp0;} else { const q=prev[s]; R=(H===1||a===PA)?q.U+q.Y:q.U; V=H===1?0:(a>=PA?0:q.Y); }
+      const S=R*fee, T=R*(ret-p.infl), W=(V+L/2)*fee, X=(V+L/2)*(ret-p.infl);
+      const Z=a===PA+UP-1?R+T-S:((a>=PA&&a<PA+UP)?R/(PA+UP-a):0);
+      c[s]={R,V,W,X,Z,U:R-S+T-Z};
+    }
+    for(const [lo,hi] of [['A','B'],['C','D']]){
+      const l=c[lo],h=c[hi];
+      l.Y=a>=PA?0:l.V+L+l.X-l.Z+(p.fixFee?-l.W:(h.W-l.W));
+      h.Y=a>=PA?0:h.V+L+h.X-h.Z+(p.fixFee?-h.W:0);
+    }
+    for(const s of ['A','B','C','D']){ prev[s]=c[s]; sum[s]+=c[s].Z; row[s]=c[s].R+c[s].V; row['pkb'+s]=c[s].R; row['pay'+s]=c[s].Z; }
+    rows.push(row);
+  }
+  return {rows,sum,kost:((sum.A-sum.B)+(sum.C-sum.D))/2,tapt:((sum.A-sum.C)+(sum.B-sum.D))/2,p};
+}
+
+/* ---------- charts ---------- */
+const NS='http://www.w3.org/2000/svg';
+function el(tag,attrs,parent){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(parent)parent.appendChild(e);return e;}
+function niceMax(v){ if(v<=0) return 1; const e=Math.pow(10,Math.floor(Math.log10(v))); const m=v/e; return (m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10)*e; }
+function fmtAxisKr(v){ if(v>=1e6) return (v/1e6).toLocaleString('nb-NO',{maximumFractionDigits:1})+' mill'; if(v>=1e3) return nf.format(v/1e3)+' k'; return nf.format(v); }
+let state=null;
+function drawChart(host,o){
+  host.innerHTML='';
+  const W=Math.max(300,host.clientWidth), H=o.h, m={l:58,r:14,t:8,b:26};
+  const svg=el('svg',{viewBox:`0 0 ${W} ${H}`,role:'img','aria-label':o.label},host);
+  const ages=o.ages, x0=ages[0], x1=ages[ages.length-1];
+  const X=a=>m.l+(a-x0)/(x1-x0)*(W-m.l-m.r), Y=v=>m.t+(1-v/o.max)*(H-m.t-m.b);
+  for(let i=0;i<=o.ticks;i++){ const v=o.max*i/o.ticks,y=Y(v);
+    el('line',{x1:m.l,x2:W-m.r,y1:y,y2:y,stroke:i===0?'var(--line)':'var(--grid)','stroke-width':1},svg);
+    el('text',{x:m.l-8,y:y+4,'text-anchor':'end'},svg).textContent=o.fmt(v); }
+  const step=(x1-x0)>30?5:2; for(let a=Math.ceil(x0/step)*step;a<=x1;a+=step) el('text',{x:X(a),y:H-8,'text-anchor':'middle'},svg).textContent=a;
+  const xm=X(o.marker); el('line',{x1:xm,x2:xm,y1:m.t,y2:H-m.b,stroke:'var(--muted)','stroke-dasharray':'3 3','stroke-width':1},svg);
+  el('text',{x:xm+5,y:m.t+11},svg).textContent='uttak';
+  if(o.gap){ const [a1,a2]=o.gap; let d=''; ages.forEach((a,i)=>d+=(i?'L':'M')+X(a)+','+Y(Math.max(a1[i],a2[i]))); for(let i=ages.length-1;i>=0;i--) d+='L'+X(ages[i])+','+Y(Math.min(a1[i],a2[i])); el('path',{d:d+'Z',fill:'var(--gap)',stroke:'none'},svg); }
+  o.series.forEach(s=>{ let d=''; ages.forEach((a,i)=>d+=(i?'L':'M')+X(a).toFixed(1)+','+Y(s.v[i]).toFixed(1));
+    el('path',{d,fill:'none',stroke:s.c,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'},svg); });
+  const cross=el('line',{x1:0,x2:0,y1:m.t,y2:H-m.b,stroke:'var(--fg2)','stroke-width':1,visibility:'hidden'},svg);
+  const dots=o.series.map(s=>el('circle',{r:4.5,fill:s.c,stroke:'var(--panel)','stroke-width':2,visibility:'hidden'},svg));
+  const hit=el('rect',{x:m.l,y:0,width:W-m.l-m.r,height:H,fill:'transparent',style:'cursor:crosshair'},svg);
+  return {svg,W,X,Y,cross,dots,hit,m};
+}
+
+function render(){
+  const v=getP(); if(FIELDS.some(k=>isNaN(v[k]))) return;
+  const r=model(v);
+  $('kTapt').textContent=kr(round10k(r.tapt)); $('kKost').textContent=kr(round10k(r.kost)); $('kSum').textContent=kr(round10k(r.tapt+r.kost));
+  $('kSumD').textContent=`Sum utbetalinger ${kr(round10k(r.sum.D))} i dag mot ${kr(round10k(r.sum.A))} best`;
+  const ages=r.rows.map(x=>x.age);
+  const best=r.rows.map(x=>pkbOnly?x.pkbA:x.A), now=r.rows.map(x=>pkbOnly?x.pkbD:x.D);
+  const wNow=r.rows.map(x=>x.w*100), wBest=r.rows.map(x=>x.wAlt*100);
+  const c1=drawChart($('c1'),{h:260,ages,max:niceMax(Math.max(...best,...now)*1.05),ticks:4,fmt:fmtAxisKr,label:'Oppsparte midler etter alder',marker:r.p.uttak,
+    gap:[best,now],series:[{v:now,c:'var(--s2)'},{v:best,c:'var(--s1)'}]});
+  const c2=drawChart($('c2'),{h:150,ages,max:100,ticks:4,fmt:x=>x+' %',label:'Aksjeandel etter alder',marker:r.p.uttak,
+    series:[{v:wNow,c:'var(--s2)'},{v:wBest,c:'var(--s1)'}]});
+  state={ages,best,now,wNow,wBest,rows:r.rows,charts:[c1,c2]};
+  [c1,c2].forEach(c=>{ c.hit.addEventListener('pointermove',e=>hover(c,e)); c.hit.addEventListener('pointerleave',hideTip); });
+  const sc=[['A','Langsiktig profil, lavt honorar'],['B','Langsiktig profil, høyt honorar'],['C','Dagens nedtrapping, lavt honorar'],['D','Dagens nedtrapping, høyt honorar (i dag)']];
+  $('scen').innerHTML='<thead><tr><th>Scenario</th><th>Sum utbetalinger</th><th>Mot D</th></tr></thead><tbody>'+
+    sc.map(([k,t])=>`<tr><td><b>${k}</b> · ${t}</td><td>${kr(r.sum[k])}</td><td>${k==='D'?'':kr(r.sum[k]-r.sum.D)}</td></tr>`).join('')+'</tbody>';
+  $('tbl').innerHTML='<thead><tr><th>Alder</th><th>Innskudd</th><th>Aksjeandel i dag</th><th>Saldo i dag (D)</th><th>Utbetaling D</th><th>Aksjeandel best</th><th>Saldo best (A)</th><th>Utbetaling A</th></tr></thead><tbody>'+
+    r.rows.map(x=>`<tr><td>${x.age}</td><td>${x.L?nf.format(x.L):''}</td><td>${Math.round(x.w*100)} %</td><td>${nf.format(x.D)}</td><td>${x.payD?nf.format(x.payD):''}</td><td>${Math.round(x.wAlt*100)} %</td><td>${nf.format(x.A)}</td><td>${x.payA?nf.format(x.payA):''}</td></tr>`).join('')+'</tbody>';
+}
+function hover(c,e){
+  const s=state, rect=c.svg.getBoundingClientRect(), sx=(e.clientX-rect.left)*c.W/rect.width, x0=s.ages[0], x1=s.ages[s.ages.length-1];
+  let a=Math.round(x0+(sx-c.m.l)/(c.W-c.m.l-c.m.r)*(x1-x0)); a=Math.max(x0,Math.min(x1,a)); const i=a-x0;
+  s.charts.forEach((ch,ci)=>{ const xx=ch.X(a); ch.cross.setAttribute('x1',xx); ch.cross.setAttribute('x2',xx); ch.cross.setAttribute('visibility','visible');
+    const vals=ci===0?[s.now[i],s.best[i]]:[s.wNow[i],s.wBest[i]];
+    ch.dots.forEach((d,k)=>{d.setAttribute('cx',xx);d.setAttribute('cy',ch.Y(vals[k]));d.setAttribute('visibility','visible');}); });
+  const tip=$('tip'), row=s.rows[i];
+  tip.innerHTML=`<b>Alder ${a}</b>
+   <div class="r"><span>Saldo i dag</span><span class="num">${kr(s.now[i])}</span></div>
+   <div class="r"><span>Saldo best</span><span class="num">${kr(s.best[i])}</span></div>
+   <div class="r"><span>Gap</span><span class="num">${kr(s.best[i]-s.now[i])}</span></div>
+   <div class="r"><span>Aksjeandel i dag / best</span><span class="num">${Math.round(s.wNow[i])} % / ${Math.round(s.wBest[i])} %</span></div>`+
+   (row.payA?`<div class="r"><span>Utbetaling i dag / best</span><span class="num">${fmtAxisKr(row.payD)} / ${fmtAxisKr(row.payA)}</span></div>`:'');
+  tip.hidden=false;
+  const card=tip.parentElement.getBoundingClientRect(), hr=c.svg.getBoundingClientRect();
+  let left=e.clientX-card.left+14; if(left+tip.offsetWidth>card.width-8) left=e.clientX-card.left-tip.offsetWidth-14;
+  tip.style.left=Math.max(8,left)+'px'; tip.style.top=(hr.top-card.top+8)+'px';
+}
+function hideTip(){ $('tip').hidden=true; if(!state) return; state.charts.forEach(ch=>{ch.cross.setAttribute('visibility','hidden');ch.dots.forEach(d=>d.setAttribute('visibility','hidden'));}); }
+
+/* ---------- JSON import ---------- */
+const num=s=>{ if(typeof s==='number') return s; if(typeof s!=='string') return NaN; const m=s.replace(/ /g,' ').match(/^[\d\s.,]+/); return m?parseFloat(m[0].replace(/[\s.]/g,'').replace(',','.')):NaN; };
+const sumBy=(arr,f)=>(arr||[]).reduce((s,x)=>s+(+f(x)||0),0);
+function applyJson(obj,name){
+  const got={};
+  if(Array.isArray(obj) && obj[0] && obj[0]['inngående']){ // eiendeler.json
+    const r=obj[0], ib=r['inngående'];
+    if(r.alderNaa!=null) got.alder=r.alderNaa;
+    if(r.loenn) got.lonn=r.loenn;
+    if(ib.bundetIkkeGarantertNaaJobbPrivIB!=null) got.tp0=ib.bundetIkkeGarantertNaaJobbPrivIB;
+    if(ib.bundetIkkeGarantertTidlJobbPrivIB!=null) got.pkb0=ib.bundetIkkeGarantertTidlJobbPrivIB;
+  } else if(obj && ('alder' in obj || 'bundetSparing' in obj)){ // egneData.json
+    if(obj.alder!=null) got.alder=obj.alder;
+    const inn=obj.inntekt?.pensjonsgivendeInntekt?.beloep; if(inn) got.lonn=inn;
+    const ig=obj.bundetSparing?.ikkeGarantert||{};
+    if((ig.naavaerendeJobbPrivat||[]).length){ got.tp0=sumBy(ig.naavaerendeJobbPrivat,x=>x.naavaerendeSaldo); const i=sumBy(ig.naavaerendeJobbPrivat,x=>x.avtaltAarligInnskudd); if(i) got.innskudd=i; }
+    if(ig.tidligereJobbPrivat) got.pkb0=sumBy(ig.tidligereJobbPrivat,x=>x.naavaerendeSaldo);
+    if(!got.innskudd && obj.sumAvtaltAarligInnskudd) got.innskudd=obj.sumAvtaltAarligInnskudd;
+    const ov=obj.overstyrteVerdier||{};
+    const fee=ov.kostnadstallPensjonsparing ?? obj.kostnadstallPensjonssparingInnhentet; if(fee!=null) got.fHigh=+(fee*100).toFixed(3);
+    if(ov.uttaksalder!=null) got.uttak=ov.uttaksalder;
+    if(ov.utbetalingstid!=null) got.utbet=ov.utbetalingstid;
+    if(ov.startNedtrapping!=null) got.sN=ov.startNedtrapping;
+    if(ov.sluttNedtrapping!=null) got.eN=ov.sluttNedtrapping;
+    if(ov.sluttRatio!=null) got.eR=ov.sluttRatio<=1?ov.sluttRatio*100:ov.sluttRatio;
+  } else if(obj && 'epkAvtaler' in obj){ // norskPensjon.json
+    const e=obj.epkAvtaler||[];
+    if(e.length){ const s=sumBy(e,x=>num(x.naavarendeSaldo)); if(s) got.tp0=s;
+      const i=sumBy(e,x=>num(x.naavarendeSaldoAvtaltAarligInnskudd)); if(i) got.innskudd=i;
+      if(e[0].startalder) got.uttak=e[0].startalder;
+      if(e[0].avtaltUtbetalingsperiode){ const n=num(String(e[0].avtaltUtbetalingsperiode)); if(n) got.utbet=n; } }
+  } else if(obj && Array.isArray(obj.epks)){ // norskPensjonKostnadstall.json
+    const e=obj.epks.filter(x=>x.status!=='INACTIVE');
+    if(e.length){
+      const rate=e[0].priceInfo?.compensationRate ?? e[0].decoration?.compensationRate ?? e[0].priceInfo?.managementFee;
+      if(rate!=null) got.fHigh=rate;
+      showInv(e.map(x=>({provider:x.pensionProvider?.displayName||x.pensionProvider?.name, sel:x.priceInfo?.investmentSelection, age:x.priceInfo?.ageDependentProfile, risk:x.priceInfo?.riskClass, date:x.priceInfo?.priceDate})));
+      curSel=e[0].priceInfo?.investmentSelection||'';
+      const pk=detectProvider(e[0].pensionProvider?.displayName||e[0].pensionProvider?.name||'');
+      $('prov').value=pk; applyProvider(pk);
+    }
+  } else return `${name}: ukjent format`;
+  setVals(got,true);
+  return `${name}: ${Object.keys(got).length} verdier hentet`;
+}
+async function handleFiles(files){
+  const msgs=[]; for(const f of files){ try{ msgs.push(applyJson(JSON.parse(await f.text()),f.name)); }catch(e){ msgs.push(`${f.name}: kunne ikke leses som JSON`); } }
+  $('status').textContent=msgs.join(' · '); render();
+}
+$('file').addEventListener('change',e=>handleFiles([...e.target.files]));
+const drop=$('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>handleFiles([...e.dataTransfer.files]));
+
+function showInv(list){
+  const box=$('invSel');
+  if(!list||!list.length){ box.innerHTML='<span class="lbl">Investeringsvalg</span><span class="meta">Ikke lastet. Slipp norskPensjonKostnadstall.json.</span>'; return; }
+  const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  box.innerHTML='<span class="lbl">Investeringsvalg</span>'+list.map(x=>`<span class="val">${esc(x.sel||'Ikke oppgitt')}</span><span class="meta">${esc(x.provider)}${x.age!=null?' · aldersavhengig profil: '+(x.age?'ja':'nei'):''}${x.risk!=null?' · risikoklasse '+esc(x.risk):''}${x.date?' · '+esc(x.date):''}</span>`).join('');
+}
+
+/* ---------- provider glide paths (checked 11.11.2026) ---------- */
+const PROVIDERS={
+  dnb:{name:'DNB',profile:'Min pensjonsprofil',sR:80,eR:30,sN:47,eN:67,
+    note:'80 % aksjer til 47 år, nedvekting til 30 % ved 67 år (lest av grafen på dnb.no/pensjon/pensjonsprofiler). Startalderen kan flyttes mellom 42 og 57 år. I utbetalingen trapper DNB videre ned til 20 % ved 82 år. Modellen holder 30 % etter 67, som gir DNB litt for høy avkastning, altså et forsiktig anslag på tapt avkastning.',
+    src:[['DNB: Pensjonsprofiler (graf)','https://www.dnb.no/pensjon/pensjonsprofiler'],['DNB Nyheter 19.03.2025: Pensjonsprofiler for de fleste','https://www.dnb.no/dnbnyheter/no/bors-og-marked/dnb-pensjonsprofiler-for-de-fleste'],['DNB Egen pensjonskonto, juni 2026 (47–67 år)','https://content.dnb.no/docs/7773567/egen-pensjonskonto.pdf']]},
+  nordea:{name:'Nordea Liv',profile:'Pensjonsprofil med automatisk nedtrapping',sR:'fund',eR:10,sN:60,eN:75,
+    note:'Startandel følger investeringsvalget (Aktiv 80 gir 80 %). Nedtrapping fra 60 år over 15 år til «omtrent ti prosent».',
+    src:[['Nordea: pensjonsprofiler for innskuddspensjon','https://www.nordea.no/bedrift/vare-produkter/pensjon/tjenestepensjon/innskuddspensjon-investeringsalternativer.html'],['Nordea Liv vilkår ITPI (mai 2025)','https://www.nordea.no/Images/152-371818/Vilk%C3%A5r%20ITPI%2001092024%20-%20accessible%20(mai%202025).pdf']]},
+  storebrand:{name:'Storebrand',profile:'Anbefalt pensjon (oppdatert fra 1. juni 2026)',sR:100,eR:22.5,sN:57,eN:76,
+    note:'100 % aksjer til 57 år, deretter gradvis nedtrapping over 20 år til rundt 20–25 % ved 76 år. Modellen bruker 22,5 % ved 76 år.',
+    src:[['Storebrand: Anbefalt pensjon oppdatert (27.05.2026)','https://www.storebrand.no/privat/pensjon/anbefalt-pensjon-oppdatert']]},
+  gjensidige:{name:'Gjensidige',profile:'Alderstilpasset pensjonsprofil / Lys Fremtid',sR:100,eR:20,sN:46,eN:67,
+    note:'100 % aksjefond til 46 år, nedtrapping de siste 21 årene før utbetaling, til Trygg-fordelingen (20 % aksjer) ved 67 år.',
+    src:[['Gjensidige: Forvaltningsstiler og pensjonsprofiler','https://www.gjensidige.no/bedrift/pensjon/forvaltningsstiler-og-pensjonsprofiler']]},
+  duvi:{name:'Duvi (alternativet)',profile:'Langsiktig 80 % til 77 år, deretter Kortsiktig',bR:80,mR:30,
+    note:'Bytte ved 77 år, altså ingen nedtrapping i opptjening eller utbetaling (10 år fra 67).',
+    src:[['Duvi porteføljerapport 30.09.2025','https://duvi.no/content/uploads/2025/11/250930-Avkastning-portefoljer-Duvi-1.pdf']]}
+};
+let curSel='Nordea Liv Aktiv 80 Valutasikret (B7)';
+function detectProvider(n){ n=(n||'').toLowerCase(); for(const k of ['dnb','nordea','storebrand','gjensidige']) if(n.includes(k)) return k; return ''; }
+function fundShare(sel){ const m=String(sel||'').match(/\b(100|[1-9]0)\b/); return m?+m[1]:null; }
+function applyProvider(k){
+  const p=PROVIDERS[k], note=$('provNote');
+  if(!p){ note.textContent='Manuell: fyll inn aksjeandel og nedtrapping selv.'; renderProviders(); return; }
+  const v={}, miss=[];
+  let sR=p.sR; if(sR==='fund'){ sR=fundShare(curSel); if(sR==null) miss.push('startandel (fant ikke tall i investeringsvalget)'); }
+  if(sR!=null) v.sR=sR; else if(p.sR!=='fund') miss.push('start_ratio');
+  if(p.eR!=null) v.eR=p.eR; else miss.push('slutt_ratio');
+  if(p.sN!=null) v.sN=p.sN; else miss.push('Start_nedtrapping');
+  if(p.eN!=null) v.eN=p.eN; else miss.push('Slutt_nedtrapping');
+  setVals(v,true);
+  note.textContent=p.note+(miss.length?' Ikke oppgitt, beholder feltverdien: '+miss.join(', ')+'.':'');
+  renderProviders();
+}
+function renderProviders(){
+  const me=$('prov').value, f=x=>x==null?'<span class="unk">–</span>':x;
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  $('ptbl').innerHTML='<thead><tr><th>Leverandør</th><th>Profil</th><th>start_ratio</th><th>slutt_ratio</th><th>Start_ned&shy;trapping</th><th>Slutt_ned&shy;trapping</th><th>best_ratio</th><th>middle_ratio</th><th>Kilde</th></tr></thead><tbody>'+
+  Object.entries(PROVIDERS).map(([k,p])=>{
+    const sR=p.sR==='fund'?(fundShare(curSel)!=null&&k===me?fundShare(curSel)+' % (fra fond)':'følger fond'):(p.sR!=null?p.sR+' %':null);
+    const eR=p.eR==null?null:(k==='storebrand'?'20–25 %':k==='dnb'?'30 % (20 % ved 82)':p.eR+' %');
+    return `<tr class="${k===me?'me':''}"><td><b>${p.name}</b></td><td>${p.profile}</td><td>${f(sR)}</td><td>${f(eR)}</td><td>${f(p.sN)}</td><td>${f(p.eN)}</td><td>${f(p.bR!=null?p.bR+' %':null)}</td><td>${f(p.mR!=null?p.mR+' %':null)}</td><td>${p.src.map(([t,u])=>`<a href="${u}" target="_blank" rel="noopener">${esc(t)}</a>`).join('<br>')}</td></tr>`;
+  }).join('')+'</tbody>';
+}
+$('prov').addEventListener('change',()=>{ applyProvider($('prov').value); render(); });
+
+/* ---------- wiring ---------- */
+FIELDS.forEach(k=>$(k).addEventListener('input',()=>{ $(k).classList.remove('json'); render(); }));
+['fraNull','fixFee'].forEach(k=>$(k).addEventListener('change',render));
+function seg(tot){ pkbOnly=!tot; $('bTot').setAttribute('aria-pressed',String(tot)); $('bPkb').setAttribute('aria-pressed',String(!tot)); render(); }
+$('bTot').onclick=()=>seg(true); $('bPkb').onclick=()=>seg(false);
+$('reset').onclick=()=>{ setVals(DEFAULT_ASSUMP,false); $('fraNull').checked=true; $('fixFee').checked=false; applyProvider($('prov').value); render(); };
+$('loadExcel').onclick=()=>{ $('prov').value=''; renderProviders(); $('provNote').textContent='Excel-testpersonen bruker regnearkets verdier (50 % / 10 %, 60–75 år).'; setVals(EXCEL_PERSON,false); setVals(DEFAULT_ASSUMP,false); setVals({G0:111477},false); $('fraNull').checked=true; $('fixFee').checked=false;
+  $('status').textContent='Excel-testpersonen (alder 39, G = 111 477): skal gi 530 000 / 1 210 000 kr'; render(); };
+let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,120);});
+setVals(DEFAULT_PERSON,true); setVals({utbet:10},false); setVals(DEFAULT_ASSUMP,false);
+showInv([{provider:'Nordea Liv AS',sel:'Nordea Liv Aktiv 80 Valutasikret (B7)',age:true,risk:4,date:'2026-11-03'}]);
+$('prov').value='nordea'; applyProvider('nordea');
+render();
+</script>
+</body>
+</html>
