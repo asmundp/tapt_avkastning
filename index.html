@@ -71,6 +71,11 @@ fieldset{border:0;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .drop:hover,.drop.over{border-color:var(--accent);color:var(--fg)}
 .drop input{display:none}
 .status{font-size:12px;color:var(--muted)}
+.minikpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0 4px}
+.minikpi{border:1px solid var(--line);border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.minikpi .v{font-family:var(--f-display);font-weight:700;font-size:24px}
+.minikpi .d{color:var(--fg2);font-size:12.5px}
+@media (max-width:640px){.minikpis{grid-template-columns:1fr}}
 .provsel{width:100%;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
 .ptbl td,.ptbl th{white-space:normal;vertical-align:top}
 .ptbl td:nth-child(2),.ptbl td:last-child,.ptbl th:nth-child(2),.ptbl th:last-child{text-align:left;min-width:150px}
@@ -107,8 +112,8 @@ th{color:var(--muted);font-weight:600}
   </header>
 
   <section class="summary" aria-label="Resultat">
-    <div class="kpi main"><h3>Unødvendig tapt avkastning</h3><div class="v num" id="kTapt">–</div><div class="d">Effekt av aksjeandel</div></div>
-    <div class="kpi"><h3>Unødvendig høye kostnader</h3><div class="v num" id="kKost">–</div><div class="d">Effekt av forvaltningshonorar</div></div>
+    <div class="kpi main"><h3>Unødvendig tapt avkastning</h3><div class="v num" id="kTapt">–</div><div class="d">Langsiktig profil mot dagens nedtrapping, begge med lavt honorar</div></div>
+    <div class="kpi"><h3>Unødvendig høye kostnader</h3><div class="v num" id="kKost">–</div><div class="d">Samme nedtrapping som i dag, bare honoraret endres</div></div>
     <div class="kpi"><h3>Samlet forskjell</h3><div class="v num" id="kSum">–</div><div class="d" id="kSumD">–</div></div>
   </section>
 
@@ -195,6 +200,20 @@ th{color:var(--muted);font-weight:600}
     </aside>
   </div>
 
+  <section class="card" style="position:relative" aria-label="Unødvendig høye kostnader">
+    <h2>Unødvendig høye kostnader</h2>
+    <p class="sub" style="font-size:13px" id="costSub">Samme aksjeandel og nedtrapping som i dag. Den eneste forskjellen er honoraret.</p>
+    <div class="minikpis">
+      <div class="minikpi"><h3>Lavere sum utbetalinger</h3><div class="v num" id="cPay">–</div><div class="d">Samme tall som øverst på siden (scenario C − D)</div></div>
+      <div class="minikpi"><h3>Ekstra honorar betalt</h3><div class="v num" id="cFee">–</div><div class="d">Sum av årlig merkostnad. Lavere enn utbetalingsforskjellen fordi sparte honorarer også ville gitt avkastning.</div></div>
+    </div>
+    <div class="ctitle">Akkumulert ekstra honorar (dagens kr)</div>
+    <div class="chart" id="c3"></div>
+    <div class="ctitle">Ekstra honorar per år</div>
+    <div class="chart" id="c4"></div>
+    <div class="tip" id="tip2" hidden></div>
+  </section>
+
   <section class="card">
     <h2>Leverandørenes standardprofiler</h2>
     <p class="sub" style="font-size:13px">Hentet fra leverandørenes egne sider 11.11.2026. Raden for brukerens leverandør er uthevet og brukes i beregningen. Strek betyr at leverandøren ikke oppgir tallet. Da beholdes verdien i feltet.</p>
@@ -215,10 +234,10 @@ th{color:var(--muted);font-weight:600}
 
   <section class="card method">
     <h2>Slik beregnes tallene</h2>
-    <p>Modellen er en direkte overføring av Fasit-arket i simulator_NY26okt26.xlsx. Med Excel-testpersonen gir den 530 780 kr i kostnader og 1 207 589 kr i tapt avkastning, samme tall som arket.</p>
+    <p>Modellen er en direkte overføring av Fasit-arket i simulator_NY26okt26.xlsx. Med Excel-testpersonen gir den samme scenarioer og samme samlede forskjell (A − D = 1 738 368 kr) som arket. Fordelingen mellom kostnader og tapt avkastning er bevisst endret, se under.</p>
     <p>Fire scenarioer simuleres år for år. <b>A</b>: langsiktig profil med lavt honorar. <b>B</b>: langsiktig profil med høyt honorar. <b>C</b>: dagens nedtrapping med lavt honorar. <b>D</b>: dagens nedtrapping med høyt honorar. Langsiktig profil gir <i>best_ratio</i> aksjer fram til byttealderen og deretter <i>middle_ratio</i>. Avkastningen regnes realt (nominell minus inflasjon) av saldo pluss halve årets innskudd.</p>
     <p>Innskuddet er sparesats × lønn opp til 7,1 G pluss 5,9 % mellom 7,1 og 12 G, deflatert til dagens kroner. Sparesatsen under 7,1 G er avtalt innskudd delt på lønn. Ved hvert jobbskifte flyttes saldoen til et pensjonskapitalbevis. Fra uttaksalder betales saldoen ut som saldo delt på antall gjenværende år.</p>
-    <p><b>Kostnader</b> = ((A − B) + (C − D)) / 2. <b>Tapt avkastning</b> = ((A − C) + (B − D)) / 2. Hver effekt er gjennomsnittet av de to mulige rekkefølgene, og til sammen gir de A − D. Resultatene rundes av til nærmeste 10 000 kr.</p>
+    <p><b>Unødvendig høye kostnader</b> = C − D: dagens nedtrapping beholdes, og bare honoraret senkes. <b>Unødvendig tapt avkastning</b> = A − C: med lavt honorar i begge byttes dagens nedtrapping ut med langsiktig profil. Til sammen gir de A − D. Excel-arket fordeler i stedet med gjennomsnittet av begge rekkefølgene, som gir litt høyere kostnader og litt lavere tapt avkastning. Resultatene rundes av til nærmeste 10 000 kr.</p>
   </section>
 </div>
 
@@ -258,17 +277,17 @@ function model(v){
       let R,V; if(k===0){R=p.pkb0;V=p.tp0;} else { const q=prev[s]; R=(H===1||a===PA)?q.U+q.Y:q.U; V=H===1?0:(a>=PA?0:q.Y); }
       const S=R*fee, T=R*(ret-p.infl), W=(V+L/2)*fee, X=(V+L/2)*(ret-p.infl);
       const Z=a===PA+UP-1?R+T-S:((a>=PA&&a<PA+UP)?R/(PA+UP-a):0);
-      c[s]={R,V,W,X,Z,U:R-S+T-Z};
+      c[s]={R,V,W,X,Z,U:R-S+T-Z,F:S+(a<PA?W:0)};
     }
     for(const [lo,hi] of [['A','B'],['C','D']]){
       const l=c[lo],h=c[hi];
       l.Y=a>=PA?0:l.V+L+l.X-l.Z+(p.fixFee?-l.W:(h.W-l.W));
       h.Y=a>=PA?0:h.V+L+h.X-h.Z+(p.fixFee?-h.W:0);
     }
-    for(const s of ['A','B','C','D']){ prev[s]=c[s]; sum[s]+=c[s].Z; row[s]=c[s].R+c[s].V; row['pkb'+s]=c[s].R; row['pay'+s]=c[s].Z; }
+    for(const s of ['A','B','C','D']){ prev[s]=c[s]; sum[s]+=c[s].Z; row[s]=c[s].R+c[s].V; row['pkb'+s]=c[s].R; row['pay'+s]=c[s].Z; row['fee'+s]=c[s].F; }
     rows.push(row);
   }
-  return {rows,sum,kost:((sum.A-sum.B)+(sum.C-sum.D))/2,tapt:((sum.A-sum.C)+(sum.B-sum.D))/2,p};
+  return {rows,sum,kost:sum.C-sum.D,tapt:sum.A-sum.C,p};
 }
 
 /* ---------- charts ---------- */
@@ -290,6 +309,8 @@ function drawChart(host,o){
   const xm=X(o.marker); el('line',{x1:xm,x2:xm,y1:m.t,y2:H-m.b,stroke:'var(--muted)','stroke-dasharray':'3 3','stroke-width':1},svg);
   el('text',{x:xm+5,y:m.t+11},svg).textContent='uttak';
   if(o.gap){ const [a1,a2]=o.gap; let d=''; ages.forEach((a,i)=>d+=(i?'L':'M')+X(a)+','+Y(Math.max(a1[i],a2[i]))); for(let i=ages.length-1;i>=0;i--) d+='L'+X(ages[i])+','+Y(Math.min(a1[i],a2[i])); el('path',{d:d+'Z',fill:'var(--gap)',stroke:'none'},svg); }
+  if(o.bars){ const bw=Math.max(2,(W-m.l-m.r)/ages.length-3); ages.forEach((a,i)=>{ const v=o.bars[i]; if(!(v>0)) return; el('rect',{x:X(a)-bw/2,y:Y(v),width:bw,height:Math.max(0,Y(0)-Y(v)),rx:2,fill:'var(--s2)'},svg); }); }
+  if(o.area){ let d='M'+X(ages[0])+','+Y(0); ages.forEach((a,i)=>d+='L'+X(a).toFixed(1)+','+Y(o.area[i]).toFixed(1)); d+='L'+X(ages[ages.length-1])+','+Y(0)+'Z'; el('path',{d,fill:'color-mix(in srgb,var(--s2) 14%,transparent)',stroke:'none'},svg); }
   o.series.forEach(s=>{ let d=''; ages.forEach((a,i)=>d+=(i?'L':'M')+X(a).toFixed(1)+','+Y(s.v[i]).toFixed(1));
     el('path',{d,fill:'none',stroke:s.c,'stroke-width':2,'stroke-linejoin':'round','stroke-linecap':'round'},svg); });
   const cross=el('line',{x1:0,x2:0,y1:m.t,y2:H-m.b,stroke:'var(--fg2)','stroke-width':1,visibility:'hidden'},svg);
@@ -311,6 +332,14 @@ function render(){
   const c2=drawChart($('c2'),{h:150,ages,max:100,ticks:4,fmt:x=>x+' %',label:'Aksjeandel etter alder',marker:r.p.uttak,
     series:[{v:wNow,c:'var(--s2)'},{v:wBest,c:'var(--s1)'}]});
   state={ages,best,now,wNow,wBest,rows:r.rows,charts:[c1,c2]};
+  // cost section: current glide path, high vs low fee (D vs C)
+  const extra=r.rows.map(x=>Math.max(0,x.feeD-x.feeC)); let acc=0; const cum=extra.map(v=>acc+=v);
+  $('cPay').textContent=kr(round10k(r.sum.C-r.sum.D)); $('cFee').textContent=kr(round10k(acc));
+  $('costSub').textContent=`Samme aksjeandel og nedtrapping som i dag (${Math.round(r.p.sR*100)} % → ${Math.round(r.p.eR*100)} %, ${r.p.sN}–${r.p.eN} år). Den eneste forskjellen er honoraret: ${String(v.fHigh).replace('.',',')} % mot ${String(v.fLow).replace('.',',')} %.`;
+  const c3=drawChart($('c3'),{h:200,ages,max:niceMax(acc*1.08),ticks:4,fmt:fmtAxisKr,label:'Akkumulert ekstra honorar',marker:r.p.uttak,area:cum,series:[{v:cum,c:'var(--s2)'}]});
+  const c4=drawChart($('c4'),{h:150,ages,max:niceMax(Math.max(...extra)*1.08),ticks:3,fmt:fmtAxisKr,label:'Ekstra honorar per år',marker:r.p.uttak,bars:extra,series:[]});
+  state2={ages,extra,cum,charts:[c3,c4]};
+  [c3,c4].forEach(c=>{ c.hit.addEventListener('pointermove',e=>hoverCost(c,e)); c.hit.addEventListener('pointerleave',hideCost); });
   [c1,c2].forEach(c=>{ c.hit.addEventListener('pointermove',e=>hover(c,e)); c.hit.addEventListener('pointerleave',hideTip); });
   const sc=[['A','Langsiktig profil, lavt honorar'],['B','Langsiktig profil, høyt honorar'],['C','Dagens nedtrapping, lavt honorar'],['D','Dagens nedtrapping, høyt honorar (i dag)']];
   $('scen').innerHTML='<thead><tr><th>Scenario</th><th>Sum utbetalinger</th><th>Mot D</th></tr></thead><tbody>'+
@@ -336,6 +365,20 @@ function hover(c,e){
   let left=e.clientX-card.left+14; if(left+tip.offsetWidth>card.width-8) left=e.clientX-card.left-tip.offsetWidth-14;
   tip.style.left=Math.max(8,left)+'px'; tip.style.top=(hr.top-card.top+8)+'px';
 }
+let state2=null;
+function hoverCost(c,e){
+  const s=state2, rect=c.svg.getBoundingClientRect(), sx=(e.clientX-rect.left)*c.W/rect.width, x0=s.ages[0], x1=s.ages[s.ages.length-1];
+  let a=Math.round(x0+(sx-c.m.l)/(c.W-c.m.l-c.m.r)*(x1-x0)); a=Math.max(x0,Math.min(x1,a)); const i=a-x0;
+  s.charts.forEach((ch,ci)=>{ const xx=ch.X(a); ch.cross.setAttribute('x1',xx); ch.cross.setAttribute('x2',xx); ch.cross.setAttribute('visibility','visible');
+    if(ci===0&&ch.dots[0]){ ch.dots[0].setAttribute('cx',xx); ch.dots[0].setAttribute('cy',ch.Y(s.cum[i])); ch.dots[0].setAttribute('visibility','visible'); } });
+  const tip=$('tip2');
+  tip.innerHTML=`<b>Alder ${a}</b><div class="r"><span>Ekstra honorar dette året</span><span class="num">${kr(s.extra[i])}</span></div><div class="r"><span>Akkumulert</span><span class="num">${kr(s.cum[i])}</span></div>`;
+  tip.hidden=false;
+  const card=tip.parentElement.getBoundingClientRect(), hr=c.svg.getBoundingClientRect();
+  let left=e.clientX-card.left+14; if(left+tip.offsetWidth>card.width-8) left=e.clientX-card.left-tip.offsetWidth-14;
+  tip.style.left=Math.max(8,left)+'px'; tip.style.top=(hr.top-card.top+8)+'px';
+}
+function hideCost(){ $('tip2').hidden=true; if(!state2) return; state2.charts.forEach(ch=>{ch.cross.setAttribute('visibility','hidden');ch.dots.forEach(d=>d.setAttribute('visibility','hidden'));}); }
 function hideTip(){ $('tip').hidden=true; if(!state) return; state.charts.forEach(ch=>{ch.cross.setAttribute('visibility','hidden');ch.dots.forEach(d=>d.setAttribute('visibility','hidden'));}); }
 
 /* ---------- JSON import ---------- */
@@ -452,8 +495,8 @@ FIELDS.forEach(k=>$(k).addEventListener('input',()=>{ $(k).classList.remove('jso
 function seg(tot){ pkbOnly=!tot; $('bTot').setAttribute('aria-pressed',String(tot)); $('bPkb').setAttribute('aria-pressed',String(!tot)); render(); }
 $('bTot').onclick=()=>seg(true); $('bPkb').onclick=()=>seg(false);
 $('reset').onclick=()=>{ setVals(DEFAULT_ASSUMP,false); $('fraNull').checked=true; $('fixFee').checked=false; applyProvider($('prov').value); render(); };
-$('loadExcel').onclick=()=>{ $('prov').value=''; renderProviders(); $('provNote').textContent='Excel-testpersonen bruker regnearkets verdier (50 % / 10 %, 60–75 år).'; setVals(EXCEL_PERSON,false); setVals(DEFAULT_ASSUMP,false); setVals({G0:111477},false); $('fraNull').checked=true; $('fixFee').checked=false;
-  $('status').textContent='Excel-testpersonen (alder 39, G = 111 477): skal gi 530 000 / 1 210 000 kr'; render(); };
+$('loadExcel').onclick=()=>{ $('prov').value=''; renderProviders(); $('provNote').textContent='Excel-testpersonen bruker regnearkets verdier (50 % / 10 %, 60–75 år).'; setVals(EXCEL_PERSON,false); setVals(DEFAULT_ASSUMP,false); setVals({G0:111477,ov:76},false); $('fraNull').checked=true; $('fixFee').checked=false;
+  $('status').textContent='Excel-testpersonen (alder 39, G = 111 477): samlet forskjell skal være 1 740 000 kr som i arket'; render(); };
 let rt; window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,120);});
 setVals(DEFAULT_PERSON,true); setVals({utbet:10},false); setVals(DEFAULT_ASSUMP,false);
 showInv([{provider:'Nordea Liv AS',sel:'Nordea Liv Aktiv 80 Valutasikret (B7)',age:true,risk:4,date:'2026-11-03'}]);
